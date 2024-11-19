@@ -3,12 +3,12 @@ mod util;
 
 use anyhow::Result;
 use async_nats::Client;
-use proto::hello::Hello;
 use protobuf::Message;
+use serde::{Deserialize, Serialize};
 use tokio::task::JoinSet;
 use tracing::info;
 
-#[tracing::instrument]
+/*#[tracing::instrument]
 async fn send_hello(nc: async_nats::Client, from: &str) -> Result<()> {
 
     // create test message
@@ -23,15 +23,25 @@ async fn send_hello(nc: async_nats::Client, from: &str) -> Result<()> {
     publisher_client.publish("hello", encoded.into()).await?;
 
     Ok(())
+}*/
+
+#[derive(Deserialize)]
+struct Custom {
+    #[serde(rename = "minecraft:play_time")]
+    playtime: i64,
+    #[serde(rename = "minecraft:deaths")]
+    deaths: i32,
 }
 
-#[tracing::instrument]
-pub async fn handle_hello(nc: Client, msg: async_nats::Message) -> Result<()> {
-    let decoded_msg = Hello::parse_from_bytes(&msg.payload)?;
-    println!("Hello from: {}", decoded_msg.from);
-    info!("Hello from: {}", decoded_msg.from);
+#[derive(Deserialize)]
+struct Stats {
+    #[serde(rename = "minecraft:custom")]
+    minecraft_custom: Custom,
+}
 
-    Ok(())
+#[derive(Deserialize)]
+struct Wrapper {
+    stats: Stats,
 }
 
 #[tokio::main]
@@ -46,28 +56,16 @@ async fn main() -> Result<()> {
     // Setup logging
     util::setup_logging(app_name.as_str());
 
-    // connect to db
-    let _db = util::connect_to_database().await?;
-
     // connect to nats
     let nc = util::connect_to_nats().await?;
 
-    let mut set = JoinSet::new();
+    // find each *.json file in current directory
 
-    let _nc = nc.clone();
-    set.spawn(async move {
-        util::handle_requests(_nc, "hello", handle_hello).await.expect("hello");
-    });
-    /* Or * /
-    set.spawn(async move {
-        util::handle_requests(_nc, "vault.store", move|_nc, msg| {
-            handle_hello(/ *[other params]* /, _nc, msg)
-        }).await.expect("hello");
-    });*/
+    // parse uuid from file name
 
-    // send hello
-    send_hello(nc.clone(), &app_name.to_string()).await?;
+    // find deaths and playtime
 
-    set.join_all().await;
+    // build message and send.
+
     Ok(())
 }
