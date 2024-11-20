@@ -1,7 +1,7 @@
 mod proto;
 mod util;
 
-use std::{env, fs};
+use std::{env, fs, path};
 use anyhow::Result;
 use protobuf::{Message, MessageField};
 use serde::{Deserialize};
@@ -78,7 +78,9 @@ async fn main() -> Result<()> {
         let uuid = Uuid::parse_str(raw_uuid.as_str())?;
 
         // parse json
-        let (playtime, deaths) = parse_json_file(&*(dir.clone() + &*raw_uuid + ".json"))?;
+        let path = path::Path::new(&dir);
+        let path = path.join(raw_uuid + ".json");
+        let (playtime, deaths) = parse_json_file(path.to_str().unwrap())?;
 
         // debug message
         println!("{} - Deaths: {} Playtime: {}",
