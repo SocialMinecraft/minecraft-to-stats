@@ -1,14 +1,15 @@
 mod proto;
 mod util;
 
-use std::fs;
+use std::{env, fs};
 use anyhow::Result;
 use async_nats::Client;
-use protobuf::Message;
+use protobuf::{Message, MessageField};
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinSet;
 use tracing::info;
 use uuid::Uuid;
+use crate::proto::stats_update::UpdateStats;
 /*#[tracing::instrument]
 async fn send_hello(nc: async_nats::Client, from: &str) -> Result<()> {
 
@@ -29,7 +30,7 @@ async fn send_hello(nc: async_nats::Client, from: &str) -> Result<()> {
 #[derive(Deserialize)]
 struct Custom {
     #[serde(rename = "minecraft:play_time")]
-    playtime: i64,
+    playtime: i32,
     #[serde(rename = "minecraft:deaths")]
     deaths: Option<i32>,
 }
@@ -45,8 +46,21 @@ struct Wrapper {
     stats: Stats,
 }
 
+fn get_arg(index: usize) -> Option<String> {
+    env::args().nth(index)
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
+
+    let name = match get_arg(1) {
+        Some(arg) => arg,
+        None => {
+            println!("No first argument provided");
+            //return Err(anyhow::anyhow!("No first argument provided"));
+            return Ok(());
+        },
+    };
 
     // get the app name, used for group and such
     let app_name = match util::get_app_name() {
@@ -70,13 +84,22 @@ async fn main() -> Result<()> {
         // parse json
         let data = parse_json_file(&*("./stats/".to_owned() + &*raw_uuid + ".json"))?;
 
-        // debug messaeg
+        // debug message
         println!("{} - Deaths: {} Playtime: {}",
                  uuid.to_string(),
                  data.stats.minecraft_custom.deaths.unwrap_or(0),
                  data.stats.minecraft_custom.playtime);
 
-        // build message and send.
+        // build stats object.
+        let mut stats = proto::stats::Stats::new();
+        stats.deaths = data.stats.minecraft_custom.deaths;
+        stats.playtime = Some(data.stats.minecraft_custom.playtime);
+        stats.minecraft_uuid = uuid.to_string();
+        stats.server = name.clone();
+
+        // send message
+        let mut msg = UpdateStats::new();
+        msg.stats = MessageField::some(stats);
     }
 
     Ok(())
