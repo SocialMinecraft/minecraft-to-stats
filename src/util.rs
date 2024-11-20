@@ -4,14 +4,7 @@ use tracing::{Level};
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::format::FmtSpan;
 
-pub async fn connect_to_nats() -> Result<async_nats::Client> {
-    // Get Nats Env Variable
-    let nats_urls_env = match env::var("NATS_URL") {
-        Ok(value) => value,
-        Err(e) => {
-            return Err(anyhow::anyhow!("Couldn't read NATS_URL environment variable: {}", e));
-        },
-    };
+pub async fn connect_to_nats(nats_urls_env: &str) -> Result<async_nats::Client> {
 
     let nats_urls : Vec<&str> = nats_urls_env.split(",").collect();
 

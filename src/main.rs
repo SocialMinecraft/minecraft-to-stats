@@ -4,7 +4,7 @@ mod util;
 use std::{env, fs};
 use anyhow::Result;
 use protobuf::{Message, MessageField};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use uuid::Uuid;
 use crate::proto::stats_update::UpdateStats;
 
@@ -34,36 +34,51 @@ fn get_arg(index: usize) -> Option<String> {
 #[tokio::main]
 async fn main() -> Result<()> {
 
-    let name = match get_arg(1) {
-        Some(arg) => arg,
-        None => {
-            println!("No first argument provided");
-            //return Err(anyhow::anyhow!("No first argument provided"));
-            return Ok(());
-        },
-    };
-
     // get the app name, used for group and such
     let app_name = match util::get_app_name() {
         Some(name) => name,
         None => { return Err(anyhow::anyhow!("Could not  determine application name.")); },
     };
 
+    let nats_url = match get_arg(1) {
+        Some(arg) => arg,
+        None => {
+            println!("Missing Argument. usage: {} nats_url name folder", app_name);
+            return Ok(());
+        },
+    };
+
+    let name = match get_arg(2) {
+        Some(arg) => arg,
+        None => {
+            println!("Missing Argument. usage: {} nats_url name folder", app_name);
+            return Ok(());
+        },
+    };
+
+    let dir = match get_arg(3) {
+        Some(arg) => arg,
+        None => {
+            println!("Missing Argument. usage: {} nats_url name folder", app_name);
+            return Ok(());
+        },
+    };
+
     // Setup logging
     util::setup_logging(app_name.as_str());
 
     // connect to nats
-    let nc = util::connect_to_nats().await?;
+    let nc = util::connect_to_nats(nats_url.as_str()).await?;
 
     // find each *.json file in current directory
-    let raw_uuids = list_json_files("./stats")?;
+    let raw_uuids = list_json_files(dir.as_str())?;
 
     for raw_uuid in raw_uuids {
         // get uuid.
         let uuid = Uuid::parse_str(raw_uuid.as_str())?;
 
         // parse json
-        let (playtime, deaths) = parse_json_file(&*("./stats/".to_owned() + &*raw_uuid + ".json"))?;
+        let (playtime, deaths) = parse_json_file(&*(dir.clone() + &*raw_uuid + ".json"))?;
 
         // debug message
         println!("{} - Deaths: {} Playtime: {}",
