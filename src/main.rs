@@ -82,18 +82,18 @@ async fn main() -> Result<()> {
         let uuid = Uuid::parse_str(raw_uuid.as_str())?;
 
         // parse json
-        let data = parse_json_file(&*("./stats/".to_owned() + &*raw_uuid + ".json"))?;
+        let (playtime, deaths) = parse_json_file(&*("./stats/".to_owned() + &*raw_uuid + ".json"))?;
 
         // debug message
         println!("{} - Deaths: {} Playtime: {}",
                  uuid.to_string(),
-                 data.stats.minecraft_custom.deaths.unwrap_or(0),
-                 data.stats.minecraft_custom.playtime);
+                 deaths,
+                 playtime);
 
         // build stats object.
         let mut stats = proto::stats::Stats::new();
-        stats.deaths = data.stats.minecraft_custom.deaths;
-        stats.playtime = Some(data.stats.minecraft_custom.playtime);
+        stats.deaths = Some(deaths);
+        stats.playtime = Some(playtime);
         stats.minecraft_uuid = uuid.to_string();
         stats.server = name.clone();
 
@@ -105,14 +105,21 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn parse_json_file(file_path: &str) -> anyhow::Result<Wrapper> {
+/// Convert the json file into deaths and playtime.
+///
+/// # Arguments
+/// * `file_path` - Path to the file to parse.
+///
+/// # Returns
+/// * Tuple of playtime, deaths
+fn parse_json_file(file_path: &str) -> anyhow::Result<(i32, i32)> {
     // Read the file contents
     let data = fs::read_to_string(file_path)?;
 
     // Parse the JSON string into the struct
     let parsed: Wrapper = serde_json::from_str(&data)?;
 
-    Ok(parsed)
+    Ok((parsed.stats.minecraft_custom.playtime, parsed.stats.minecraft_custom.deaths.unwrap_or(0)))
 }
 
 /// Get a list of json file names.
