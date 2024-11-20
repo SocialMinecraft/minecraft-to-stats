@@ -3,29 +3,10 @@ mod util;
 
 use std::{env, fs};
 use anyhow::Result;
-use async_nats::Client;
 use protobuf::{Message, MessageField};
 use serde::{Deserialize, Serialize};
-use tokio::task::JoinSet;
-use tracing::info;
 use uuid::Uuid;
 use crate::proto::stats_update::UpdateStats;
-/*#[tracing::instrument]
-async fn send_hello(nc: async_nats::Client, from: &str) -> Result<()> {
-
-    // create test message
-    let mut msg = Hello::new();
-    msg.from = from.to_string();
-
-    // Serialize the user to bytes
-    let encoded: Vec<u8> = msg.write_to_bytes().unwrap();
-
-    // send message
-    let publisher_client = nc.clone();
-    publisher_client.publish("hello", encoded.into()).await?;
-
-    Ok(())
-}*/
 
 #[derive(Deserialize)]
 struct Custom {
@@ -100,6 +81,9 @@ async fn main() -> Result<()> {
         // send message
         let mut msg = UpdateStats::new();
         msg.stats = MessageField::some(stats);
+        let encoded: Vec<u8> = msg.write_to_bytes().unwrap();
+        let publisher_client = nc.clone();
+        publisher_client.publish("stats.update", encoded.into()).await?;
     }
 
     Ok(())

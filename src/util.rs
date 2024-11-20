@@ -1,5 +1,4 @@
 use anyhow::Result;
-use futures::StreamExt;
 use std::env;
 use tracing::{Level};
 use tracing_subscriber::EnvFilter;
